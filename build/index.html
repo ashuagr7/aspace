@@ -1,13 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html data-theme="keen">
 <head>
-  <link rel="stylesheet" href="./style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Noto+Sans:wght@200;300;400;500;600;700;800&family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.2.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Abhisek730/cddCdn@main/styles.css">
+<link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar" id="sidebar"></div>
+    <div class="container" id="app" sidebar-full>
+      <input sidebarinput="" id="slide-sidebar" type="checkbox" role="button" />
+      <label sidebartoggle="" for="slide-sidebar"
+        ><span><i class="ri-arrow-left-line" id="toggle-aside"></i></span
+      ></label>
+        <aside class="sidebar" id="sidebar"></aside>
         <div id="main" class="main">
-          <nav class="navbar">
+          <header class="navbar" id="navbar" nav>
             <div class="navbar-left">
               <h1>Document Editor</h1>
             </div>
@@ -23,13 +34,16 @@
                 </div>
               </div>
             </div>
-          </nav>
+          </header>
           
-          <div id="doc-content"></div>
-          <button id="save-button">Save</button>
+          <div id="doc-content"><div id="kanban-container"></div></div>
+          
         </div>
     </div>
 
+    
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+    <script type="module" src="./handlebar/index.js"></script>
     <script src="./script.js"></script>
 </body>
 </html>

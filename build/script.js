@@ -1,17 +1,21 @@
 const url = "http://localhost:3000"
+let rootDocument
+let selectedDocId
 
 
 document.getElementById('export-json').addEventListener('click', () => exportDocument('json'));
 document.getElementById('export-csv').addEventListener('click', () => exportDocument('csv'));
 
 
+
+
+// function to export document 
 function exportDocument(format) {
+  console.log("export" + format);
   window.location.href = `/documents/export/${format}`;
 }
 
-let rootDocument
-let selectedDocId
-
+// function to get all document 
 async function getDocuments() {
   const response = await fetch(`/documents`);
   const doc = await response.json();
@@ -54,11 +58,9 @@ async function renderDocument(doc, parentElement) {
   titleElement.textContent = doc.title;
   docElement.appendChild(titleElement);
 
-
-
   const addButton = document.createElement('button');
   addButton.classList.add('add-node-button');
-  addButton.textContent = '+';
+  addButton.innerHTML = '<i class="ri-add-line addNode"></i>';
   docElement.appendChild(addButton);
 
   const childrenContainer = document.createElement('div');
@@ -67,9 +69,6 @@ async function renderDocument(doc, parentElement) {
 
 
   parentElement.appendChild(docElement);
-
-
-
 }
 
 // Function to create nodes
@@ -95,15 +94,29 @@ async function createNode(newNodeTitle, parentId) {
 
 // Fucntion to create bullet Points 
 async function bulletPoints(docId) {
-  // Fetch the document from the server
+
+  // Fetch the documents from the server
+  const doc = await getDocument(docId)
+  console.log(doc);
   const response = await fetch(`/documents/${docId}/children`);
   const children = await response.json();
-
 
   // Get the main content area
   const main = document.getElementById('doc-content');
   main.dataset.id = docId
   main.innerHTML = '';  // Clear the main content area
+
+  // create and append a div for parent 
+  const parentDiv = document.createElement('div');
+  if(doc.parentId != null){
+    parentDiv.contentEditable = true;
+  }  
+  parentDiv.dataset.id = doc._id;
+  parentDiv.classList.add('bullet-head');
+  parentDiv.textContent = doc.title;
+  
+
+  main.appendChild(parentDiv);
 
   // Create and append a div for each child document
   for (let child of children) {
@@ -113,21 +126,28 @@ async function bulletPoints(docId) {
     childDiv.dataset.id = child._id;
     childDiv.classList.add('bullet-point');
     childDiv.textContent = child.title;
-    setupDragAndDrop(childDiv, child)
+    
 
     main.appendChild(childDiv);
   }
 }
 
+// Function to create kanban cards for startup screen
+function renderKanbanCard(doc) {
+  // Create the card element
+  const cardDiv = document.createElement('div');
+  cardDiv.classList.add('kanban-card');
+  
+  // Set the card title
+  const cardTitle = document.createElement('h3');
+  cardTitle.textContent = doc.title;
+  cardDiv.appendChild(cardTitle);
 
+  // Add the card to the Kanban container
+  const kanbanContainer = document.querySelector('#kanban-container');
+  kanbanContainer.appendChild(cardDiv);
+}
 
-// Fetch and render the root document when the page loads
-fetch('/documents/root')
-  .then(response => response.json())
-  .then(async (doc) => {
-    console.log(doc);
-    renderDocument(doc, document.getElementById("sidebar"))
-  });
 
 
 // When a document title is clicked, fetch the document and display its content in the main area
@@ -136,46 +156,17 @@ document.getElementById('sidebar').addEventListener('click', async (event) => {
     // Get the document ID
     const docId = event.target.parentNode.dataset.id;
     selectedDocId = docId
+    
     bulletPoints(docId)
     // // Display the document content in the main area
     // document.getElementById('doc-content').innerHTML = `<div class="bullet-point" contenteditable="true">${doc.content}<br></div>`
   }
 });
 
-function setupDragAndDrop(bulletPointElement, child) {
-  bulletPointElement.addEventListener('dragstart', (e) => {
-    e.dataTransfer.setData('text/plain', child._id);
-  });
-
-  bulletPointElement.addEventListener('dragover', (e) => {
-    e.preventDefault();
-  });
-
-  bulletPointElement.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    const draggedId = e.dataTransfer.getData('text/plain');
-    const droppedId = child._id;
-
-    const response = await fetch(`/documents/swap/${draggedId}/${droppedId}`, {
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      const message = await response.text();
-      console.error(message);
-      return;
-    }
-
-    const updatedDocument = await response.json();
-    renderDocument(updatedDocument);
-  });
-}
-
-
 
 // Get the textarea and save button elements
 const textarea = document.getElementById('doc-content');
-const saveButton = document.getElementById('save-button');
+
 
 let saveTimeoutId;
 // Function to save the changes to the server
@@ -220,6 +211,13 @@ textarea.addEventListener('input', (e) => {
 
 // When an "Add Node" button is clicked, create a new document
 sidebar.addEventListener('click', async function (event) {
+  if (event.target.matches('.addNode')) {
+    // stop the original event
+    event.stopPropagation();
+    // trigger the click event on the parent button
+    event.target.parentNode.click();
+    return; // Exit function after triggering the click event
+  }
   if (event.target.matches('.add-node-button')) {
     const parentElement = event.target.parentElement;
     const parentId = parentElement.dataset.id;
@@ -318,8 +316,7 @@ dropdown.addEventListener('click', function (event) {
 });
 
 
-// Initialize with one bullet point
-document.getElementById('doc-content').innerHTML = '<div class="bullet-point" contenteditable="true"><br></div>';
+
 
 // Handle enter and tab events for bullet points.
 document.getElementById('doc-content').addEventListener('keydown', async function (e) {
@@ -368,3 +365,24 @@ document.getElementById('doc-content').addEventListener('click', function (e) {
     selection.addRange(range);
   }
 });
+
+function start(){
+  
+// Fetch and render the root document when the page loads
+fetch('/documents/root')
+  .then(response => response.json())
+  .then(async (doc) => {
+    console.log(doc);
+    renderDocument(doc, document.getElementById("sidebar"))
+   let docId = doc._id
+   const response = await fetch(`/documents/${docId}/children`);
+   const children = await response.json();
+children.forEach(document => renderKanbanCard(document));
+  });
+
+
+
+}
+
+document.addEventListener('DOMContentLoaded', start);
+
