@@ -1,0 +1,185 @@
+body {
+    display: flex;
+    height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    color: rgba(0, 0, 0, 0.87); /* Material design text color */
+    background-color: #FAFAFA; /* Material design background color */
+    overflow: hidden;
+    width: 100vw;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+  .container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+.sidebar {
+    width: 250px;
+    height: 100%;
+    overflow-y: auto;
+    border-right: 1px solid #E0E0E0; /* Material design divider color */
+    padding: 1em;
+}
+
+#main {
+    flex-grow: 1;
+    padding: 0.5rem 1em;
+    overflow-y: auto;
+  }
+
+
+
+.doc-title {
+cursor: pointer;
+}
+
+.doc.selected > .doc-title {
+font-weight: bold;
+}
+.doc-title {
+display: inline-block;
+}
+
+.add-node-button {
+display: inline-block;
+margin-left: 10px;
+padding: 0 5px;
+border: none;
+background-color: #f0f0f0;
+color: #333;
+cursor: pointer;
+font-size: 1rem;
+line-height: 1.5;
+text-align: center;
+white-space: nowrap;
+vertical-align: middle;
+border-radius: 0.25rem;
+}
+
+.doc {
+    margin: 1em 0;
+  }
+  
+  .doc .doc-children {
+    margin-left: 1em;
+  }
+  
+  .expand-collapse-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-right: 0.5em;
+  }
+  
+  .doc-title {
+    cursor: pointer;
+  }
+  
+
+#doc-content {
+  width: 100%;
+  height: calc(90% - 1.5em); /* subtract the margin and button height */
+  box-sizing: border-box;
+  padding: 3em;
+  border: 1px solid #E0E0E0;
+  margin-bottom: 1em;
+  resize: none;
+}
+
+#save-button {
+    background-color: #4CAF50; /* Material design light green */
+    color: white;
+    border: none;
+    padding: 0.5em 1em;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    transition-duration: 0.4s;
+    cursor: pointer;
+  }
+
+  #save-button:hover {
+    background-color: #45a049;
+  }
+
+  .bullet-point {
+    /* your existing styles here... */
+    position: relative; /* this allows absolute positioning within this element */
+    padding-left: 10px; /* to provide space for the bullet point */
+    font-size: 20px;
+}
+
+.bullet-point::before {
+    content: '•'; /* this is the bullet point */
+    position: absolute;
+    left: 0; /* position the bullet point at the left side of the bullet point element */
+    color: #000; /* color of bullet point, change as needed */
+    font-weight: bolder;
+}
+
+
+
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  background-color: #3c8dbc;
+  padding: 10px;
+  color: white;
+  box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
+  margin-bottom: 0.5em;
+}
+
+.navbar h1 {
+  margin: 0;
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: white;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+  border-radius: 4px;
+  overflow: hidden;
+  right: 0;
+}
+
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+.dropbtn {
+  background-color: #3c8dbc;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.dropbtn:hover {
+  background-color: #2980b9;
+}
+
+
+
+

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar" id="sidebar"></div>
+        <div id="main" class="main">
+          <nav class="navbar">
+            <div class="navbar-left">
+              <h1>Document Editor</h1>
+            </div>
+            <div class="navbar-right">
+              <div class="dropdown">
+                <button class="dropbtn">Export
+                  <i class="fa fa-caret-down"></i>
+                </button>
+                <div class="dropdown-content">
+                  <a href="#" id="export-json">Export as JSON</a>
+                  <a href="#" id="export-csv">Export as CSV</a>
+                  <!-- <a href="#" id="export-pdf">Export as PDF</a> -->
+                </div>
+              </div>
+            </div>
+          </nav>
+          
+          <div id="doc-content"></div>
+          <button id="save-button">Save</button>
+        </div>
+    </div>
+
+    <script src="./script.js"></script>
+</body>
+</html>
