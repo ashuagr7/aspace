@@ -77,7 +77,7 @@ async function createNode(newNodeTitle, parentId) {
     title: newNodeTitle,
     parentId: parentId,
   };
-  console.log(newNode);
+  
 
   const res = await fetch('/documents', {
     method: 'POST',
@@ -97,7 +97,7 @@ async function bulletPoints(docId) {
 
   // Fetch the documents from the server
   const doc = await getDocument(docId)
-  console.log(doc);
+  
   const response = await fetch(`/documents/${docId}/children`);
   const children = await response.json();
 
@@ -194,14 +194,14 @@ async function saveChanges(documentId, updatedText) {
 
 // Listen for the input event on the textarea
 textarea.addEventListener('input', (e) => {
-  console.log(e.target.dataset.id, e.target.innerText);
+  
   // Save the changes after a delay to avoid saving too frequently
   // If a timer is already running, clear it
   if (saveTimeoutId) clearTimeout(saveTimeoutId);
 
   // Start a new timer
   saveTimeoutId = setTimeout(() => {
-    console.log(e.target);
+    
     // Call the update function
     saveChanges(e.target.dataset.id, e.target.innerText);
     // Clear the timeoutId
@@ -339,6 +339,7 @@ document.getElementById('doc-content').addEventListener('keydown', async functio
     }
 
     let node = await createNode("untitled", e.target.parentElement.dataset.id)
+    bulletPoint.dataset.id = node._id
     // Update the title of the document in the sidebar
     const sidebarDoc = document.querySelector(`.doc[data-id="${node.parentId}"]`)
     const childrenContainer = sidebarDoc.parentNode.querySelector('.doc-children');
@@ -374,7 +375,7 @@ function start(){
 fetch('/documents/root')
   .then(response => response.json())
   .then(async (doc) => {
-    console.log(doc);
+    
     renderDocument(doc, document.getElementById("sidebar"))
    let docId = doc._id
    const response = await fetch(`/documents/${docId}/children`);
