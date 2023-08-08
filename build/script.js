@@ -201,6 +201,7 @@ textarea.addEventListener('input', (e) => {
 
   // Start a new timer
   saveTimeoutId = setTimeout(() => {
+    console.log(e.target);
     // Call the update function
     saveChanges(e.target.dataset.id, e.target.innerText);
     // Clear the timeoutId
@@ -328,6 +329,8 @@ document.getElementById('doc-content').addEventListener('keydown', async functio
     bulletPoint.classList.add('bullet-point');
     bulletPoint.contentEditable = "true";
     bulletPoint.innerHTML = '<br>';
+     // Focus on the new bullet point
+     setTimeout(() => bulletPoint.focus(), 0);
 
     if (e.target.nextSibling) {
       e.target.parentNode.insertBefore(bulletPoint, e.target.nextSibling);
@@ -344,8 +347,7 @@ document.getElementById('doc-content').addEventListener('keydown', async functio
 
 
 
-    // Focus on the new bullet point
-    bulletPoint.focus();
+   
   } else if (e.key === 'Tab') {
     e.preventDefault();
 
