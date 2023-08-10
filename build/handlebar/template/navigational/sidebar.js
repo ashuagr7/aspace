@@ -13,7 +13,7 @@ const sidebarTemplate = `
           <summary>
             <span>
               <i class="{{this.iconClass}}"></i>
-              <span class="pageName">{{this.pageName}}</span>
+              <span id="{{this.id}}" class="pageName">{{this.pageName}}</span>
             </span>
             {{#if this.subItems}}
               <i class="ri-arrow-down-s-line"></i>

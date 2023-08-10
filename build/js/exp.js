@@ -45,7 +45,19 @@ function checkAuthentication() {
     }
 }
 
+// function to get shareed with me docs
+async function getSharedDocuments() {
+    const sharedDocuments = await apiRequest('/sharedWithMe','GET');
+  
+    if (sharedDocuments && sharedDocuments.length) {
+        renderHandlebarsTemplate(explorerList, sharedDocuments, "#explorerList")
+    } else {
+      alert('No shared documents found.');
+    }
+  }
+ 
 function setupEventListener(){
+    // create new root documetn 
     document.getElementById('create-document').addEventListener('click', async () => {
         // This could be a simple POST to create a new blank root document
         const response = await apiRequest('/api/documents/createRoot', 'POST');
@@ -55,6 +67,9 @@ function setupEventListener(){
             alert("Failed to create a new document.");
         }
     });
+
+    // get shred docs
+    document.getElementById("shared-with-me").addEventListener("click",getSharedDocuments)
 }
 
 function start() {
@@ -66,3 +81,4 @@ function start() {
 
 window.onload = checkAuthentication;
 document.addEventListener('DOMContentLoaded', start);
+

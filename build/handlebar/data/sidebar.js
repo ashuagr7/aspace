@@ -22,7 +22,7 @@ const sidebarData = {
           {
             iconClass: "ri-user-shared-line",
             pageName: "Shared with me",
-            subItems: ["Item 1", "Item 2", "Item 3"]
+            id:"shared-with-me"
           },
           {
             iconClass: "ri-stack-line",

@@ -3,11 +3,11 @@ const Document = mongoose.model("Document");; // Assume you have a Document mode
 
 function docPermission(requiredPermission) {
     return async (req, res, next) => {
-        console.log(req.params,req.url);
-        const docId = req.params.docId;  // Assuming you have a docId in your route params
-console.log(docId);
+
+        const { docid } = req.headers;  
+
         try {
-            const document = await Document.findById(docId);
+            const document = await Document.findById(docid);
 
             if (!document) {
                 return res.status(404).send({ error: 'Document not found' });
@@ -19,7 +19,7 @@ console.log(docId);
                 return;
             }
 
-            const permission = document.sharedWith.find(per => per.userId.toString() === req.user._id.toString());
+            const permission = document.sharedUsers.find(per => per.userId.toString() === req.user._id.toString());
 
             if (!permission) {
                 return res.status(403).send({ error: 'Access denied' });

@@ -8,6 +8,7 @@ let params = new URLSearchParams(window.location.search);
 let currentDocId = params.get('id');
 let saveTimeoutId;
 let selectedDocId
+let timeoutId
 const url = "http://localhost:3000"
 
 
@@ -36,16 +37,22 @@ function createDropdown() {
 
 // Genric apiRequest Function 
 async function apiRequest(url, method, data) {
-  console.log(url,method,data);
+  
   try {
       const response = await fetch(url, {
           method: method,
           headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + localStorage.getItem('token') // assuming the token is stored in localStorage
+              'Authorization': 'Bearer ' + localStorage.getItem('token'), // assuming the token is stored in localStorage
+              'docid':currentDocId
           },
           body: JSON.stringify(data)
       });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`API Request Failed: ${text}`);
+    }
 
       return await response.json();
   } catch (error) {
@@ -67,31 +74,6 @@ function checkAuthentication() {
   if (!token) {
     window.location.href = '/signIn.html';  // Redirect to sign-in page
   }
-}
-
-// function to get all document 
-async function getDocuments() {
-  const response = await fetch(`/documents`);
-  const doc = await response.json();
-  return doc;
-}
-
-// Function to fetch document by ID from server
-async function getDocument(id) {
-  const response = await fetch(`/documents/${id}`);
-  const doc = await response.json();
-  return doc;
-}
-
-// Function to save document changes to the server
-async function saveDocument(doc) {
-  await fetch(`/documents/${doc.id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(doc),
-  });
 }
 
 // Recursive function to render a document and its children
@@ -132,7 +114,7 @@ async function createNode(newNodeTitle, parentId) {
     title: newNodeTitle,
     parentId: parentId,
   };
-  const createdNode = await apiRequest(`/api/createNode/${currentDocId}`, 'POST',newNode);
+  const createdNode = await apiRequest(`/api/createNode`, 'POST',newNode);
   return createdNode
 }
 
@@ -140,21 +122,18 @@ async function createNode(newNodeTitle, parentId) {
 async function bulletPoints(docId) {
 
   // Fetch the documents from the server
-  const doc = await getDocument(docId)
+  const doc = await apiRequest(`/documents/${docId}`, 'GET');
 
-  const response = await fetch(`/documents/${docId}/children`);
-  const children = await response.json();
+  
+  const children = await apiRequest(`/documents/${docId}/children`,"GET")
 
   // Get the main content area
-
   main.dataset.id = docId
   main.innerHTML = '';  // Clear the main content area
 
   // create and append a div for parent 
   const parentDiv = document.createElement('div');
-  if (doc.parentId != null) {
-    parentDiv.contentEditable = true;
-  }
+  parentDiv.contentEditable = true;
   parentDiv.dataset.id = doc._id;
   parentDiv.classList.add('bullet-head');
   parentDiv.textContent = doc.title;
@@ -195,16 +174,10 @@ function renderKanbanCard(doc) {
 // Function to save the changes to the server
 async function saveChanges(documentId, updatedText) {
   // Update the document on the server
-  const response = await fetch(`/documents/${documentId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      title: updatedText,
-    }),
-  });
-  const updatedDocument = await response.json();
+  let body = {
+  title :updatedText
+}
+  const updatedDocument = await apiRequest(`/documents/${documentId}`,'PUT',body)
 
   // Update the title of the document in the sidebar
   const sidebarDocTitle = document.querySelector(`.doc[data-id="${documentId}"]`);
@@ -220,8 +193,7 @@ async function loadDocument() {
       // Populate your editor with the document data
       renderDocument(document, sidebar)
       let docId = document._id
-      const response = await fetch(`/documents/${docId}/children`);
-      const children = await response.json();
+      const children = await apiRequest(`/documents/${docId}/children`, "GET")
       children.forEach(document => renderKanbanCard(document));
   } else {
       alert("Failed to load document.");
@@ -244,6 +216,26 @@ window.onclick = function(event) {
   }
 }
 }
+
+async function getSharedDocuments() {
+  const sharedDocuments = await apiRequest('GET', '/documents/sharedWithMe');
+
+  if (sharedDocuments && sharedDocuments.length) {
+    // Render the documents to the UI
+    const sharedDocsContainer = document.getElementById('sharedDocsContainer');
+    sharedDocsContainer.innerHTML = ''; // clear previous entries
+
+    sharedDocuments.forEach(doc => {
+      const docItem = document.createElement('div');
+      docItem.innerText = doc.title; // assuming your document has a title property
+      sharedDocsContainer.appendChild(docItem);
+    });
+  } else {
+    alert('No shared documents found.');
+  }
+}
+
+
 
 function setupEventListener() {
  
@@ -274,7 +266,7 @@ function setupEventListener() {
       saveChanges(e.target.dataset.id, e.target.innerText);
       // Clear the timeoutId
       timeoutId = null;
-    }, 2000);; // Adjust the delay as needed
+    }, 1000);; // Adjust the delay as needed
   });
 
   // When an "Add Node" button is clicked, create a new document
@@ -301,10 +293,10 @@ function setupEventListener() {
   // When an expand/collapse button is clicked, fetch the children of its document and toggle their visibility
   sidebar.addEventListener('click', async function (event) {
     if (event.target.classList.contains('expand-collapse-button')) {
-      const parentNode = event.target.parentNode;
-      const parentNodeId = parentNode.dataset.id;
+      let parentNode = event.target.parentNode;
+      let parentNodeId = parentNode.dataset.id;
       // Fetch the children from the server if they haven't been fetched yet
-      const childrenContainer = parentNode.querySelector('.doc-children');
+      let childrenContainer = parentNode.querySelector('.doc-children');
 
       if (event.target.parentElement.getAttribute('data-children-fetched') === 'true') {
 
@@ -317,8 +309,8 @@ function setupEventListener() {
           event.target.textContent = '►';
         }
       } else {
-        const response = await fetch(`/documents/${parentNodeId}/children`);
-        const children = await response.json();
+        
+        let children = await apiRequest(`/documents/${parentNodeId}/children`,"GET")
 
         for (let child of children) {
           renderDocument(child, childrenContainer);
@@ -412,6 +404,8 @@ function setupEventListener() {
     }
   });
 
+
+
   document.getElementById('export-json').addEventListener('click', () => exportDocument('json'));
   document.getElementById('export-csv').addEventListener('click', () => exportDocument('csv'));
 
@@ -428,16 +422,3 @@ window.onload = checkAuthentication;
 document.addEventListener('DOMContentLoaded', start);
 
 
-
-// Handle document sharing
-// function shareDocument() {
-//     // Here you'd call your API endpoint to share the document
-//     // You can get the values from the modal's input fields
-//     const userEmail = document.getElementById('shareEmail').value;
-//     const role = document.getElementById('shareRole').value;
-    
-//     // ... Your logic to share the document using the above values ...
-
-//     // Once done, close the modal
-//     modal.style.display = "none";
-// }

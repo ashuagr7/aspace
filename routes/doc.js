@@ -4,6 +4,7 @@ const checkToken = require("../middleware/checkToken");
 const docPermission = require("../middleware/docPerm")
 const mongoose = require("mongoose");
 const Document = mongoose.model("Document");
+const User = mongoose.model("User");
 
 
 app.get('/documents/export/json', async (req, res) => {
@@ -26,14 +27,15 @@ app.get('/documents/export/csv', async (req, res) => {
 });
 
 // POST request to create a new document under a parent
-app.post('/api/createNode/:id',checkToken,docPermission("editor"), async (req, res) => {
+app.post('/api/createNode',checkToken,docPermission("editor"), async (req, res) => {
     // Extract user ID from the request object
-    const ownerId = req.user._id;
+    const ownerId = req.user._id.toString();
+    console.log(ownerId);
 
     // Create new document with the provided data and owner ID
     const newDocData = {
         ...req.body,
-        owner: ownerId
+        ownerId: ownerId
     };
     const newDoc = new Document(newDocData);
     await newDoc.save();
@@ -44,20 +46,13 @@ app.post('/api/createNode/:id',checkToken,docPermission("editor"), async (req, r
     res.send(newDoc);
 });
 
-// Get root document, create if it doesn't exist
-app.get('/documents/root', async (req, res) => {
-    let rootDocument = await Document.findOne({ title: 'Root' });
-    if (!rootDocument) {
-        rootDocument = new Document({ title: 'Root', parentId: null, children: [] });
-        await rootDocument.save();
-    }
-    res.send(rootDocument);
-});
 
 // GET request to fetch a document and its immediate children
-app.get('/documents/:id', async (req, res) => {
+app.get('/documents/:id',checkToken,docPermission("viewer"), async (req, res) => {
     try {
-        const document = await Document.findById(req.params.id).populate('children');
+        
+        const document = await Document.findById(req.params.id)
+        console.log(document);
         if (!document) {
             return res.status(404).send({ message: "Document not found" });
         }
@@ -69,14 +64,14 @@ app.get('/documents/:id', async (req, res) => {
 });
 
 // get children of a document
-app.get('/documents/:id/children', async (req, res) => {
+app.get('/documents/:id/children',checkToken,docPermission("viewer"), async (req, res) => {
     const parentId = req.params.id;
     const children = await Document.find({ parentId: parentId });
     res.send(children);
 });
 
 // GET /api/documents/roots
-app.get('/api/documents/roots',checkToken,  async (req, res) => {
+app.get('/api/documents/roots',checkToken,async (req, res) => {
     try {
         const rootDocuments = await Document.find({ ownerId: req.user._id, parentId: null });
         res.status(200).json(rootDocuments);
@@ -103,7 +98,7 @@ app.post('/api/documents/createRoot',checkToken,  async (req, res) => {
 });
 
 // Update document by ID
-app.put('/documents/:id', async (req, res) => {
+app.put('/documents/:id',checkToken,docPermission("editor"), async (req, res) => {
     const document = await Document.findByIdAndUpdate(req.params.id, req.body);
     res.send(document);
 });
@@ -115,20 +110,56 @@ app.delete('/documents/:id', async (req, res) => {
 });
 
 // share the doc
-app.post('/share/:docId', async (req, res) => {
-    const doc = await Document.findById(req.params.docId);
-
-    // Check if the requester is the owner of the document
-    if (!doc.owner.equals(req.user._id)) {
-        return res.status(403).json({ error: 'Access denied' });
+app.post('/shareDocument', checkToken,docPermission("editor"), async (req, res) => {
+    const { docId, emailToShare, role } = req.body;
+console.log(req.body);
+    // Fetch user using email
+    const userToShareWith = await User.findOne({ email: emailToShare });
+    console.log(userToShareWith);
+    if (!userToShareWith) {
+        return res.status(404).json({msg:'User not found'});
     }
 
-    // Add the shared user to the document
-    doc.sharedUsers.push({ userId: req.body.userId, role: req.body.role });
-    await doc.save();
+    const document = await Document.findById(docId);
+    if (!document) {
+        return res.status(404).json({msg:'Document not found'});
+    }
 
-    res.json({ message: 'Document shared successfully' });
+    
+  // Check if document is already shared with the user
+  const isAlreadyShared = document.sharedUsers.some(shared => shared.userId.equals(userToShareWith._id.toString()));
+
+  if (isAlreadyShared) {
+    return res.status(422).json({ error: "Document already shared with this user" });
+  }
+    // // Ensure the user requesting to share is the owner.
+    // if (document.ownerId.toString() !== req.user._id.toString()) {
+    //     return res.status(403).send('Permission denied');
+    // }
+
+    // Add user and their permission to the sharedUsers array.
+    document.sharedUsers.push({ userId: userToShareWith._id, role });
+    await document.save();
+
+    res.status(200).json({ error: 'Document shared successfully' });
+
 });
+
+// API endpoint to get documents shared with a user
+app.get('/sharedWithMe', checkToken, async (req, res) => {
+    console.log(req.url);
+    try {
+      const userId = req.user._id; // This assumes you've set the user object in the request after JWT verification.
+  
+      const documents = await Document.find({ "sharedUsers.userId": userId });
+      
+      return res.status(200).json(documents);
+  
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
 
 
 module.exports = app

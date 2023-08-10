@@ -42,6 +42,7 @@ font-family: 'Noto Sans', sans-serif;
 
 .doc-title {
 cursor: pointer;
+max-width: 140px;
 }
 
 .doc.selected > .doc-title {
@@ -294,6 +295,10 @@ form{
   color: black;
   text-decoration: none;
   cursor: pointer;
+}
+#kanban-container{
+  display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 
