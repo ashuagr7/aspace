@@ -8,7 +8,7 @@ const navbarData = {
     ],
     menuItems: [
         {
-            name: "New",
+            name: "Export",
             subItems: [
                 {
                     name: "Export as JSON",
@@ -25,6 +25,10 @@ const navbarData = {
              
 
             ],
+        },
+        {
+            name: "Share",
+            id:"openShareModal"
         },
         // {
         //     name: "Dashboard",

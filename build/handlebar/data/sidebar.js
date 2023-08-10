@@ -5,12 +5,12 @@ const sidebarData = {
         name:"Dashboard",
         sections: [
           {
-            iconClass: "ri-history-line",
+            iconClass: "ri-time-fill",
             pageName: "Recent",
             subItems: []
           },
           {
-            iconClass: "ri-draft-line",
+            iconClass: "ri-pencil-line",
             pageName: "Drafts",
             subItems: ["Item 1", "Item 2"]
           },

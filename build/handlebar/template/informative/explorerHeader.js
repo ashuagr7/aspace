@@ -6,7 +6,7 @@ const explorerHeader = `
   <article>
   {{#if buttons}}
   {{#each buttons}}
-  <button>{{this}}</button>
+  <button id="{{this.id}}"><i class="{{this.icon}}"></i>{{this.title}}</button>
   {{/each}}
   {{/if}}
     

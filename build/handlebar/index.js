@@ -15,46 +15,31 @@ import { dashBoard } from "./template/informative/dashcard.js";
 import { profileHeaderData } from "./data/profileHeader.js";
 
 const engine = [
-   {
+    {
         template: navbarTemplate,
         data: navbarData,
         sel: "#navbar"
     },
-    // {
-    //     template: cardTemplate,
-    //     data:cardData,
-    //     sel:"#explorerCard"
-
-    // },
-    // {
-    //     template: searchComponent,
-    //     data:searchData,
-    //     sel:"#searchComponent"
-    // },
-    // {
-    //     template: explorerHeader,
-    //     data:explorerHeaderData,
-    //     sel:"#header"
-    // },
-    // {
-    //     template: explorerHeader,
-    //     data:profileHeaderData,
-    //     sel:"#header"
-    // },
+    {
+        template:sidebarTemplate,
+        data:sidebarData,
+        sel:"#sidebarPari"
+    },
+    {
+        template: explorerHeader,
+        data:explorerHeaderData,
+        sel:"#header"
+    },
     // {
     //     template:explorerList,
     //     data:explorerListData,
     //     sel:"#explorerList"
     // },
-    // {
-    //     template:dashBoard,
-    //     data:dashData,
-    //     sel:"#dashCards"
-    // }
+   
 ]
 
 function renderHandlebarsTemplate(template, data, selector) {
-    
+
     // Compile the Handlebars template
     const compiledTemplate = Handlebars.compile(template);
 
@@ -62,7 +47,7 @@ function renderHandlebarsTemplate(template, data, selector) {
     const renderedHtml = compiledTemplate(data);
 
     // Inject html into dom 
-    
+
     document.querySelector(selector).innerHTML = renderedHtml
 
     // Return the rendered HTML
@@ -70,8 +55,10 @@ function renderHandlebarsTemplate(template, data, selector) {
 }
 
 
-engine.forEach((element)=>{
-    
-    renderHandlebarsTemplate(element.template,element.data,element.sel)
+engine.forEach((element) => {
+    if (document.querySelector(element.sel)) {
+        renderHandlebarsTemplate(element.template, element.data, element.sel)
+    }
+
 })
 
