@@ -1,6 +1,6 @@
-import { sidebarData } from "/data/sidebar.js";
+import { sidebarData } from "/data/sidebarData.js";
 import { sidebarTemplate } from "/template/navigational/sidebar.js";
-import { navbarData } from "/data/navbar.js";
+import { navbarData } from "/data/navbarData.js";
 import { navbarTemplate } from "/template/navigational/navbar.js";
 
 import { explorerHeader } from "/template/informative/explorerHeader.js";
