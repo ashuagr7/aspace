@@ -1,8 +1,8 @@
 import { explorerList } from "../handlebar/template/informative/explorerList.js";
-import { generateUniqueId } from "./utils/uniqueId.js";
-import { IndexedDB } from "./utils/idb.js";
-import { Loader } from "./utils/loader.js";
-import { Auth } from "./auth.js";
+import { generateUniqueId } from "/utils/uniqueId.js";
+import { IndexedDB } from "/utils/idb.js";
+import { Loader } from "/utils/loader.js";
+import { Auth } from "/auth.js";
 
 const auth = new Auth()
 
