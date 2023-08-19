@@ -1,3 +1,5 @@
+import { IndexedDB } from "./utils/idb.js";
+
 class Auth {
     constructor() {
         this.token = localStorage.getItem('token');
@@ -19,8 +21,10 @@ class Auth {
                 body: JSON.stringify({ email, password }),
             });
             const data = await response.json();
+            console.log(data);
             if (data.token) {
                 localStorage.setItem('token', data.token);
+                
                 this.token = data.token;
                 return true;
             } else {
@@ -74,9 +78,20 @@ class Auth {
         }
     }
 
-    signOut() {
-        localStorage.removeItem('token');
-        this.token = null;
+   async signOut() {
+        // Clear local storage
+        localStorage.clear();
+
+        // Clear specific object stores from IndexedDB
+        // Repeat for each object store you want to clear
+        try {
+            await IndexedDB.ClearStore("MyDatabase", "documents");
+            window.location.href = '/signIn.html'; 
+            console.log("Successfully logged out and cleared data");
+        } catch (error) {
+            console.error("Error during logout:", error);
+        }
+        
     }
 
     isAuthenticated() {
@@ -126,3 +141,4 @@ const auth = new Auth()
 
 
 
+export {Auth}

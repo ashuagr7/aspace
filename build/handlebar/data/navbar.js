@@ -30,6 +30,10 @@ const navbarData = {
             name: "Share",
             id:"openShareModal"
         },
+        {
+            name: "LogOut",
+            id:"logOutBtn"
+        },
         // {
         //     name: "Dashboard",
         //     eid: "/dashboard",

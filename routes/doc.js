@@ -26,74 +26,72 @@ app.get('/documents/export/csv', async (req, res) => {
     res.send(csv);
 });
 
-// POST request to create a new document under a parent
-app.post('/api/createNode',checkToken,docPermission("editor"), async (req, res) => {
+
+
+app.get('/api/fetchUserDocuments', checkToken, async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const documents = await Document.find({
+            $or: [
+                { ownerId: userId },
+                { 'sharedUsers.userId': userId }
+            ]
+        });
+
+        res.json(documents);
+    } catch (error) {
+        res.status(500).send({ message: 'Error fetching documents', error });
+    }
+});
+
+
+app.post('/api/uploadDocuments', checkToken,  async (req, res) => {
     // Extract user ID from the request object
     const ownerId = req.user._id.toString();
     console.log(ownerId);
 
-    // Create new document with the provided data and owner ID
-    const newDocData = {
-        ...req.body,
+    // Ensure request body is an array
+    if (!Array.isArray(req.body)) {
+        console.log(req.body);
+        return res.status(400).send({ error: "Expected an array of documents." });
+    }
+
+    // Process the documents
+    let newDocsData = req.body.map(doc => ({
+        ...doc,
         ownerId: ownerId
-    };
-    const newDoc = new Document(newDocData);
-    await newDoc.save();
-    const parentDoc = await Document.findById(req.body.parentId);
-    parentDoc.children.push(newDoc._id);
-    await parentDoc.save();
+    }));
 
-    res.send(newDoc);
+    // Insert all new documents
+    const insertedDocs = await Document.insertMany(newDocsData);
+    return res.status(200).json({ message: "Succesfully synced" });
 });
 
-
-// GET request to fetch a document and its immediate children
-app.get('/documents/:id',checkToken,docPermission("viewer"), async (req, res) => {
+app.put('/api/updateDocuments', checkToken, async (req, res) => {
     try {
-        
-        const document = await Document.findById(req.params.id)
-        console.log(document);
-        if (!document) {
-            return res.status(404).send({ message: "Document not found" });
+        // Ensure request body is an array
+        if (!Array.isArray(req.body)) {
+            return res.status(400).json({ error: "Expected an array of documents." });
         }
-        res.send(document);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send({ message: "Server error" });
-    }
-});
 
-// get children of a document
-app.get('/documents/:id/children',checkToken,docPermission("viewer"), async (req, res) => {
-    const parentId = req.params.id;
-    const children = await Document.find({ parentId: parentId });
-    res.send(children);
-});
+        // Bulk operation array
+        const operations = req.body.map(doc => ({
+            updateOne: {
+                filter: {entityId: doc.entityId, ownerId: req.user._id.toString() },
+                update: doc,
+            }
+        }));
 
-// GET /api/documents/roots
-app.get('/api/documents/roots',checkToken,async (req, res) => {
-    try {
-        const rootDocuments = await Document.find({ ownerId: req.user._id, parentId: null });
-        res.status(200).json(rootDocuments);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch root documents." });
-    }
-});
-
-// POST /api/documents/createRoot
-app.post('/api/documents/createRoot',checkToken,  async (req, res) => {
-    try {
-        const newDoc = new Document({
-            title: "Untitled", // You can change this to a default name you prefer
-            ownerId: req.user._id,
-            parentId: null,
-            // Other necessary fields initialized accordingly
-        });
-
-        const savedDoc = await newDoc.save();
-        res.status(200).json(savedDoc);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to create root document." });
+        // Execute bulk operations
+        const result = await Document.bulkWrite(operations);
+        
+        // Send response
+        res.status(200).json({ matchedCount: result.matchedCount, modifiedCount: result.modifiedCount });
+        
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+        console.error(error);
     }
 });
 
@@ -110,8 +108,8 @@ app.delete('/documents/:id', async (req, res) => {
 });
 
 // share the doc
-app.post('/shareDocument', checkToken,docPermission("editor"), async (req, res) => {
-    const { docId, emailToShare, role } = req.body;
+app.post('/shareDocument', checkToken, async (req, res) => {
+    const {entityId, emailToShare, role } = req.body;
 console.log(req.body);
     // Fetch user using email
     const userToShareWith = await User.findOne({ email: emailToShare });
@@ -119,8 +117,8 @@ console.log(req.body);
     if (!userToShareWith) {
         return res.status(404).json({msg:'User not found'});
     }
-
-    const document = await Document.findById(docId);
+console.log(entityId);
+    const document = await Document.findOne({entityId:entityId});
     if (!document) {
         return res.status(404).json({msg:'Document not found'});
     }

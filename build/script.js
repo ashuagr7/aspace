@@ -1,3 +1,8 @@
+import { IndexedDB } from "./js/utils/idb.js";
+import { Loader } from "./js/utils/loader.js";
+import { generateUniqueId } from "./js/utils/uniqueId.js";
+import { Auth } from "./js/auth.js";
+const auth = new Auth()
 var modal = document.getElementById("shareModal");
 var close = document.getElementsByClassName("close")[0];
 const openModalButton = document.getElementById("openShareModall")
@@ -5,11 +10,13 @@ const textarea = document.getElementById('doc-content');
 const main = document.getElementById('doc-content');
 const sidebar = document.getElementById('sidebar');
 let params = new URLSearchParams(window.location.search);
-let currentDocId = params.get('id');
+const currentDocId = params.get('id');
+console.log(currentDocId);
 let saveTimeoutId;
 let selectedDocId
 let timeoutId
 const url = "http://localhost:3000"
+let syncTimeout = null
 
 
 // Cache your dropdown for performance
@@ -37,27 +44,27 @@ function createDropdown() {
 
 // Genric apiRequest Function 
 async function apiRequest(url, method, data) {
-  
-  try {
-      const response = await fetch(url, {
-          method: method,
-          headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + localStorage.getItem('token'), // assuming the token is stored in localStorage
-              'docid':currentDocId
-          },
-          body: JSON.stringify(data)
-      });
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`API Request Failed: ${text}`);
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token'), // assuming the token is stored in localStorage
+        'docid': currentDocId
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`API Request Failed: ${text}`);
     }
 
-      return await response.json();
+    return await response.json();
   } catch (error) {
-      console.error("Error making API request:", error);
-      return null;
+    console.error("Error making API request:", error);
+    return null;
   }
 }
 
@@ -80,7 +87,7 @@ function checkAuthentication() {
 async function renderDocument(doc, parentElement) {
   const docElement = document.createElement('div');
   docElement.classList.add('doc');
-  docElement.dataset.id = doc._id;
+  docElement.dataset.id = doc.entityId;
   docElement.dataset.childrenFetched = 'false';
 
   // Create the expand/collapse button
@@ -110,22 +117,40 @@ async function renderDocument(doc, parentElement) {
 
 // Function to create nodes
 async function createNode(newNodeTitle, parentId) {
-  const newNode = {
-    title: newNodeTitle,
-    parentId: parentId,
-  };
-  const createdNode = await apiRequest(`/api/createNode`, 'POST',newNode);
-  return createdNode
+  try {
+    // Sample data for the new node, modify according to your requirements
+    const newNodeData = {
+      title: newNodeTitle,
+      parentId: parentId,
+      entityId: generateUniqueId(),
+      syncStatus: "new",
+      lastModified: Date.now(),
+    };
+
+    const node = await IndexedDB.Create('MyDatabase', 'documents', newNodeData);
+    console.log('New node created in IndexedDB');
+
+    
+    return node
+    // Optionally, you can update the UI with the new node here.
+
+  } catch (error) {
+    console.error('Error creating new node in IndexedDB:', error);
+  }
+
+
+
 }
 
 // Fucntion to create bullet Points 
 async function bulletPoints(docId) {
 
   // Fetch the documents from the server
-  const doc = await apiRequest(`/documents/${docId}`, 'GET');
+  let doc = await IndexedDB.GetByID('MyDatabase', 'documents', docId);
 
-  
-  const children = await apiRequest(`/documents/${docId}/children`,"GET")
+
+  const allDocuments = await IndexedDB.GetAll('MyDatabase', 'documents');
+  let children = allDocuments.filter(doc => doc.parentId === docId);
 
   // Get the main content area
   main.dataset.id = docId
@@ -134,7 +159,7 @@ async function bulletPoints(docId) {
   // create and append a div for parent 
   const parentDiv = document.createElement('div');
   parentDiv.contentEditable = true;
-  parentDiv.dataset.id = doc._id;
+  parentDiv.dataset.id = doc.entityId;
   parentDiv.classList.add('bullet-head');
   parentDiv.textContent = doc.title;
 
@@ -146,7 +171,7 @@ async function bulletPoints(docId) {
     const childDiv = document.createElement('div');
     childDiv.contentEditable = true;
     childDiv.draggable = true;
-    childDiv.dataset.id = child._id;
+    childDiv.dataset.id = child.entityId;
     childDiv.classList.add('bullet-point');
     childDiv.textContent = child.title;
 
@@ -173,72 +198,127 @@ function renderKanbanCard(doc) {
 
 // Function to save the changes to the server
 async function saveChanges(documentId, updatedText) {
-  // Update the document on the server
-  let body = {
-  title :updatedText
-}
-  const updatedDocument = await apiRequest(`/documents/${documentId}`,'PUT',body)
 
-  // Update the title of the document in the sidebar
-  const sidebarDocTitle = document.querySelector(`.doc[data-id="${documentId}"]`);
+  try {
+    // Fetch the existing document from IndexedDB
+    const existingDocument = await IndexedDB.GetByID('MyDatabase', 'documents', documentId);
+    console.log(existingDocument);
+    // Update the title of the document
+    existingDocument.title = updatedText;
+    if (existingDocument.syncStatus === "synced") {
+      existingDocument.syncStatus = "updated"
+    }
 
-  let title = sidebarDocTitle.querySelector(".doc-title")
-  title.innerText = updatedText
+    // Update the document in IndexedDB
+    await IndexedDB.Update('MyDatabase', 'documents', existingDocument);
+
+    // Update the title of the document in the sidebar
+    const sidebarDocTitle = document.querySelector(`.doc[data-id="${documentId}"]`);
+    let title = sidebarDocTitle.querySelector(".doc-title");
+    title.innerText = updatedText;
+
+    if (syncTimeout) {
+      clearTimeout(syncTimeout);
+    }
+    // Schedule a sync with the server 10 seconds after saveChanges completes
+    syncTimeout = setTimeout(syncWithServer, 10 * 500);  // 10 seconds in milliseconds
+
+    console.log('Document updated successfully in IndexedDB.');
+  } catch (error) {
+    console.error('Error updating document in IndexedDB:', error);
+  }
+
 }
 
 // Function to loadDocument with id 
 async function loadDocument() {
-  const document = await apiRequest(`/documents/${currentDocId}`, 'GET');
-    if (document) {
-      // Populate your editor with the document data
-      renderDocument(document, sidebar)
-      let docId = document._id
-      const children = await apiRequest(`/documents/${docId}/children`, "GET")
-      children.forEach(document => renderKanbanCard(document));
-  } else {
-      alert("Failed to load document.");
+  try {
+    let document = await IndexedDB.GetByID('MyDatabase', 'documents', currentDocId);
+    renderDocument(document, sidebar)
+    console.log('Fetched document:', document);
+    return document;
+  } catch (error) {
+    console.error('Error fetching document:', error);
+    alert("Failed to load document.");
   }
 }
 
-function setUpModal(){
+function setUpModal() {
   // Open the modal
   openShareModal.onclick = function () {
-  modal.style.display = "block";
-}
+    modal.style.display = "block";
+  }
   // When the user clicks on the close button, close the modal
-close.onclick = function() {
-  modal.style.display = "none";
-}
-// When the user clicks anywhere outside of the modal, close it
-window.onclick = function(event) {
-  if (event.target == modal) {
+  close.onclick = function () {
     modal.style.display = "none";
   }
-}
-}
-
-async function getSharedDocuments() {
-  const sharedDocuments = await apiRequest('GET', '/documents/sharedWithMe');
-
-  if (sharedDocuments && sharedDocuments.length) {
-    // Render the documents to the UI
-    const sharedDocsContainer = document.getElementById('sharedDocsContainer');
-    sharedDocsContainer.innerHTML = ''; // clear previous entries
-
-    sharedDocuments.forEach(doc => {
-      const docItem = document.createElement('div');
-      docItem.innerText = doc.title; // assuming your document has a title property
-      sharedDocsContainer.appendChild(docItem);
-    });
-  } else {
-    alert('No shared documents found.');
+  // When the user clicks anywhere outside of the modal, close it
+  window.onclick = function (event) {
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
   }
+}
+
+async function shareDocument(req) {
+  try {
+    const data = await apiRequest('http://localhost:5000/shareDocument', 'POST', req)
+    modal.style.display = "none"
+  } catch (error) {
+    alert('Failed to share document: ' + error.message);
+  }
+}
+
+//sync
+async function syncWithServer() {
+  if (!navigator.onLine) {
+    console.log("Offline. Sync postponed.");
+    return;
+  }
+
+  try {
+    const unsyncedDocs = await IndexedDB.GetAll('MyDatabase', 'documents');
+
+    let newDocsToSync = unsyncedDocs.filter(doc => doc.syncStatus === "new");
+    if (newDocsToSync) {
+      let response = await apiRequest('/api/uploadDocuments', 'POST', newDocsToSync);
+
+    }
+    let updatedDocsToSync = unsyncedDocs.filter(doc => doc.syncStatus === "updated");
+    if (updatedDocsToSync) {
+      await apiRequest(`/api/updateDocuments`, 'PUT', updatedDocsToSync);
+    }
+    console.log(unsyncedDocs);
+    for (let doc of unsyncedDocs) {
+      doc.lastModified = Date.now();
+      doc.syncStatus = "synced";
+      
+      await IndexedDB.Update('MyDatabase', 'documents', doc);
+    }
+    console.log('Synced with server successfully.');
+  } catch (error) {
+    console.error('Error syncing with server:', error);
+  }
+}
+
+function logOut(){
+  auth.signOut()
 }
 
 
 
 function setupEventListener() {
- 
+
+  window.addEventListener('beforeunload', function (event) {
+    // Trigger the sync function
+    syncWithServer();
+
+    // Note: Some browsers might not execute asynchronous operations within 'beforeunload',
+    // so the sync function might need to be synchronous or you may need to delay the closing 
+    // slightly to ensure the sync completes (though this might degrade user experience).
+  });
+
+
   // When a document title is clicked, fetch the document and display its content in the main area
   document.getElementById('sidebar').addEventListener('click', async (event) => {
     if (event.target.classList.contains('doc-title')) {
@@ -266,7 +346,7 @@ function setupEventListener() {
       saveChanges(e.target.dataset.id, e.target.innerText);
       // Clear the timeoutId
       timeoutId = null;
-    }, 1000);; // Adjust the delay as needed
+    }, 10);; // Adjust the delay as needed
   });
 
   // When an "Add Node" button is clicked, create a new document
@@ -309,8 +389,16 @@ function setupEventListener() {
           event.target.textContent = '►';
         }
       } else {
-        
-        let children = await apiRequest(`/documents/${parentNodeId}/children`,"GET")
+        let children
+        // let children = await apiRequest(`/documents/${parentNodeId}/children`, "GET")
+        try {
+          const allDocuments = await IndexedDB.GetAll('MyDatabase', 'documents');
+          children = allDocuments.filter(doc => doc.parentId === parentNodeId);
+          console.log(children);
+          // Process or render the fetched documents as required
+        } catch (error) {
+          console.error('Error fetching documents by parentId:', error);
+        }
 
         for (let child of children) {
           renderDocument(child, childrenContainer);
@@ -374,7 +462,7 @@ function setupEventListener() {
       }
 
       let node = await createNode("untitled", e.target.parentElement.dataset.id)
-      bulletPoint.dataset.id = node._id
+      bulletPoint.dataset.id = node.entityId
       // Update the title of the document in the sidebar
       const sidebarDoc = document.querySelector(`.doc[data-id="${node.parentId}"]`)
       const childrenContainer = sidebarDoc.parentNode.querySelector('.doc-children');
@@ -405,20 +493,40 @@ function setupEventListener() {
   });
 
 
+  //shre the document 
+  document.getElementById('share-button').addEventListener('click', () => {
+    const emailToShare = document.getElementById('shareEmail').value;
+    const permission = document.getElementById('shareRole').value;
+    let data = {
+      entityId: currentDocId,
+      emailToShare: emailToShare,
+      role: permission
+    }
+    shareDocument(data);
+  });
 
+
+
+  document.getElementById("logOutBtn").addEventListener("click",logOut)
   document.getElementById('export-json').addEventListener('click', () => exportDocument('json'));
   document.getElementById('export-csv').addEventListener('click', () => exportDocument('csv'));
 
 }
 
-function start() {
+async function start() {
   // Fetch and render the root document when the page loads
-  loadDocument()
+  await loadDocument()
+  Loader.hideLoader()
   setupEventListener()
   setUpModal()
+  syncWithServer()
 }
 
 window.onload = checkAuthentication;
 document.addEventListener('DOMContentLoaded', start);
+
+
+
+
 
 
