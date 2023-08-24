@@ -19,7 +19,8 @@ const documentSchema = new mongoose.Schema({
     sharedUsers: [{
         userId: { type: ObjectId, ref: 'User' },
         role: { type: String, enum: ['editor', 'viewer'] }
-    }]
+    }],
+    children: [{  type:"String" }]
 });
 
 mongoose.model('Document', documentSchema);

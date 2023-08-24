@@ -85,7 +85,7 @@ class Auth {
         // Clear specific object stores from IndexedDB
         // Repeat for each object store you want to clear
         try {
-            await IndexedDB.ClearStore("MyDatabase", "documents");
+            await IndexedDB.DeleteStore("MyDatabase", "documents");
             window.location.href = '/signIn.html'; 
             console.log("Successfully logged out and cleared data");
         } catch (error) {

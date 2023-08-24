@@ -2,22 +2,39 @@ import { IndexedDB } from "./js/utils/idb.js";
 import { Loader } from "./js/utils/loader.js";
 import { generateUniqueId } from "./js/utils/uniqueId.js";
 import { Auth } from "./js/auth.js";
+
 const auth = new Auth()
 var modal = document.getElementById("shareModal");
 var close = document.getElementsByClassName("close")[0];
 const openModalButton = document.getElementById("openShareModall")
-const textarea = document.getElementById('doc-content');
+// const textarea = document.getElementById('doc-content');
 const main = document.getElementById('doc-content');
 const sidebar = document.getElementById('sidebar');
-let params = new URLSearchParams(window.location.search);
-const currentDocId = params.get('id');
-console.log(currentDocId);
 let saveTimeoutId;
 let selectedDocId
 let timeoutId
 const url = "http://localhost:3000"
 let syncTimeout = null
+let clickedDoc
 
+async function getIdsFromURL() {
+  const hashValue = window.location.hash; // e.g., "/RootId/NodeId"
+  const parts = hashValue.split('/');
+  console.log(parts);
+  if(!parts[2]){
+    return{
+      rootId:parts[1]
+    }
+  }else{
+    return {
+      rootId: parts[1],
+      nodeId: parts[2]
+  };
+  }        
+}
+
+let ids = await getIdsFromURL()
+console.log(ids);
 
 // Cache your dropdown for performance
 const dropdown = createDropdown();
@@ -51,7 +68,7 @@ async function apiRequest(url, method, data) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + localStorage.getItem('token'), // assuming the token is stored in localStorage
-        'docid': currentDocId
+        'docid': ids.rootId
       },
       body: JSON.stringify(data)
     });
@@ -96,8 +113,9 @@ async function renderDocument(doc, parentElement) {
   expandCollapseButton.textContent = document.children.length ? '►' : ''
   docElement.appendChild(expandCollapseButton)
 
-  const titleElement = document.createElement('div');
+  const titleElement = document.createElement('a');
   titleElement.classList.add('doc-title');
+  titleElement.href = `#/${ids.rootId}/${doc.entityId}`
   titleElement.textContent = doc.title;
   docElement.appendChild(titleElement);
 
@@ -117,6 +135,7 @@ async function renderDocument(doc, parentElement) {
 
 // Function to create nodes
 async function createNode(newNodeTitle, parentId) {
+  console.log(parentId);
   try {
     // Sample data for the new node, modify according to your requirements
     const newNodeData = {
@@ -125,12 +144,18 @@ async function createNode(newNodeTitle, parentId) {
       entityId: generateUniqueId(),
       syncStatus: "new",
       lastModified: Date.now(),
+      children: []
     };
 
     const node = await IndexedDB.Create('MyDatabase', 'documents', newNodeData);
     console.log('New node created in IndexedDB');
 
-    
+    // Fetch the parent document and update its children
+    const parentDoc = await IndexedDB.GetByID('MyDatabase', 'documents', parentId);
+    parentDoc.children.push(node.entityId);
+    await IndexedDB.Update('MyDatabase', 'documents', parentDoc);
+
+
     return node
     // Optionally, you can update the UI with the new node here.
 
@@ -169,16 +194,92 @@ async function bulletPoints(docId) {
   // Create and append a div for each child document
   for (let child of children) {
     const childDiv = document.createElement('div');
-    childDiv.contentEditable = true;
-    childDiv.draggable = true;
     childDiv.dataset.id = child.entityId;
     childDiv.classList.add('bullet-point');
-    childDiv.textContent = child.title;
+    childDiv.setAttribute('data-children-fetched', 'true')
+    const expandIcon = document.createElement('button');
+      expandIcon.textContent = '► ';
+      expandIcon.classList.add('expand-collapse-button');
+      childDiv.appendChild(expandIcon);
+      expandIcon.style.visibility = "hidden"
 
+    if (child.children && child.children.length > 0) {
+      
+      // Add an expand icon
+      expandIcon.style.visibility = "visible"
+    }
+
+    // Add a bullet icon for child
+    const bulletIcon = document.createElement('i');
+    bulletIcon.classList.add("ri-checkbox-blank-circle-fill")
+    bulletIcon.classList.add("bullet-icon")
+    // bulletIcon.innerHTML = '<i class="ri-record-circle-fill bullet-icon"></i>'
+    childDiv.appendChild(bulletIcon);
+    
+    const childText = document.createElement('span');
+    childText.contentEditable = true
+    childText.dataset.id = child.entityId;
+    childText.textContent = child.title;
+    childDiv.appendChild(childText);
+
+    const children = document.createElement("div")
+    children.classList.add("childrenContainer")
+    childDiv.appendChild(children)
 
     main.appendChild(childDiv);
+   renderTree(child.entityId,childDiv)
+    
   }
 }
+
+// function to create tree in canvas
+async function renderTree(parentId, parentElement) {
+  
+  
+  const allDocuments = await IndexedDB.GetAll('MyDatabase', 'documents');
+  let docs = allDocuments.filter(doc => doc.parentId === parentId)
+
+  // Create and append a div for each child document
+  for (let child of docs) {
+    const childDiv = document.createElement('div');
+    childDiv.dataset.id = child.entityId;
+    childDiv.classList.add('bullet-point');
+    
+    const expandIcon = document.createElement('button');
+      expandIcon.textContent = '► ';
+      expandIcon.classList.add('expand-collapse-button');
+      childDiv.appendChild(expandIcon);
+      expandIcon.style.visibility = "hidden"
+
+    if (child.children && child.children.length > 0) {
+      
+      // Add an expand icon
+      expandIcon.style.visibility = "visible"
+    }
+
+    // Add a bullet icon for child
+    const bulletIcon = document.createElement('i');
+    bulletIcon.classList.add("ri-checkbox-blank-circle-fill")
+    bulletIcon.classList.add("bullet-icon")
+    // bulletIcon.innerHTML = '<i class="ri-record-circle-fill bullet-icon"></i>'
+    childDiv.appendChild(bulletIcon);
+    
+    const childText = document.createElement('span');
+    childText.contentEditable = true
+    childText.dataset.id = child.entityId;
+    childText.textContent = child.title;
+    childDiv.appendChild(childText);
+
+    const children = document.createElement("div")
+    children.classList.add("childrenContainer")
+    childDiv.appendChild(children)
+console.log(parentElement);
+    parentElement.querySelector('.childrenContainer').appendChild(childDiv);
+   
+    
+  }
+}
+
 
 // Function to create kanban cards for startup screen
 function renderKanbanCard(doc) {
@@ -214,8 +315,11 @@ async function saveChanges(documentId, updatedText) {
 
     // Update the title of the document in the sidebar
     const sidebarDocTitle = document.querySelector(`.doc[data-id="${documentId}"]`);
-    let title = sidebarDocTitle.querySelector(".doc-title");
-    title.innerText = updatedText;
+    if(sidebarDocTitle){
+      let title = sidebarDocTitle.querySelector(".doc-title");
+      title.innerText = updatedText;
+    }
+   
 
     if (syncTimeout) {
       clearTimeout(syncTimeout);
@@ -232,10 +336,14 @@ async function saveChanges(documentId, updatedText) {
 
 // Function to loadDocument with id 
 async function loadDocument() {
+  console.log("document loaded");
   try {
-    let document = await IndexedDB.GetByID('MyDatabase', 'documents', currentDocId);
+    let document = await IndexedDB.GetByID('MyDatabase', 'documents', ids.rootId);
     renderDocument(document, sidebar)
-    console.log('Fetched document:', document);
+    if(ids.nodeId){
+      bulletPoints(ids.nodeId)
+    }
+    console.log('Fetched document:');
     return document;
   } catch (error) {
     console.error('Error fetching document:', error);
@@ -269,6 +377,48 @@ async function shareDocument(req) {
   }
 }
 
+async function serverToClient() {
+  try {
+      // 1. Fetch latest documents from server
+      
+      const serverDocuments = await apiRequest("/api/fetchUserDocuments","GET")
+
+      // 2. Get all documents from IndexedDB
+      const localDocuments = await IndexedDB.GetAll('MyDatabase', 'documents');
+
+      // 3. Compare and update
+      for (const serverDoc of serverDocuments) {
+          const localDoc = localDocuments.find(doc => doc.entityId === serverDoc.entityId);
+          
+          // If localDoc doesn't exist, it's a new document from the server, so add it
+          if (!localDoc) {
+              await IndexedDB.Create('MyDatabase', 'documents', serverDoc);
+              continue;
+          }
+
+          // Compare lastModified timestamps
+          const serverLastModified = new Date(serverDoc.lastModified).getTime();
+          const localLastModified = new Date(localDoc.lastModified).getTime();
+          
+          if (serverLastModified > localLastModified) {
+              // Server has a newer version, so update the local version
+              localDoc.title = serverDoc.title
+              localDoc.lastModified = serverDoc.lastModified
+              localDoc.syncStatus = "syncd"
+              await IndexedDB.Update('MyDatabase', 'documents', localDoc);
+          }
+      }
+
+      console.log("Server to Client sync done");
+  } catch (error) {
+      console.error('Error syncing with server:', error);
+  }
+}
+
+// Call the sync function periodically or on certain events
+setInterval(serverToClient, 10000);  // Sync every 10 seconds for example
+
+
 //sync
 async function syncWithServer() {
   if (!navigator.onLine) {
@@ -279,35 +429,184 @@ async function syncWithServer() {
   try {
     const unsyncedDocs = await IndexedDB.GetAll('MyDatabase', 'documents');
 
-    let newDocsToSync = unsyncedDocs.filter(doc => doc.syncStatus === "new");
-    if (newDocsToSync) {
-      let response = await apiRequest('/api/uploadDocuments', 'POST', newDocsToSync);
-
-    }
-    let updatedDocsToSync = unsyncedDocs.filter(doc => doc.syncStatus === "updated");
-    if (updatedDocsToSync) {
-      await apiRequest(`/api/updateDocuments`, 'PUT', updatedDocsToSync);
-    }
-    console.log(unsyncedDocs);
+    const newDocsToSync = [];
+    const updatedDocsToSync = [];
+    
     for (let doc of unsyncedDocs) {
+      if (doc.syncStatus === "new") {
+        newDocsToSync.push(doc);
+      } else if (doc.syncStatus === "updated") {
+        updatedDocsToSync.push(doc);
+      }
       doc.lastModified = Date.now();
       doc.syncStatus = "synced";
-      
-      await IndexedDB.Update('MyDatabase', 'documents', doc);
     }
+
+    const requests = [];
+    if (newDocsToSync.length) {
+      requests.push(apiRequest('/api/uploadDocuments', 'POST', newDocsToSync));
+    }
+    if (updatedDocsToSync.length) {
+      requests.push(apiRequest('/api/updateDocuments', 'PUT', updatedDocsToSync));
+    }
+
+    await Promise.all(requests);
+
+    if (unsyncedDocs.length) {
+      for (let doc of unsyncedDocs) {
+        doc.lastModified = Date.now();
+        doc.syncStatus = "synced";
+  
+        await IndexedDB.Update('MyDatabase', 'documents', doc);
+      }
+      
+    }
+
     console.log('Synced with server successfully.');
   } catch (error) {
     console.error('Error syncing with server:', error);
   }
 }
 
-function logOut(){
+
+function logOut() {
   auth.signOut()
 }
 
+async function chatWithGPT(apiKey, userMessage) {
+  const url = "https://api.openai.com/v1/chat/completions";
 
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`
+  };
+
+  const data = {
+    model: "gpt-3.5-turbo",
+    messages: [
+      {
+        role: "system",
+        content: "You are a helpful assistant."
+      },
+      {
+        role: "user",
+        content: userMessage
+      }
+    ]
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    console.log(responseData);
+    return responseData.choices[0].message.content;
+  } catch (error) {
+    console.error("There was a problem with the fetch operation:", error.message);
+  }
+}
+
+function insertOneBullet(elm,entityId,title){
+  console.log(title);
+  const childDiv = document.createElement('div');
+  childDiv.dataset.id = entityId;
+  childDiv.classList.add('bullet-point');
+  const expandIcon = document.createElement('button');
+    expandIcon.textContent = '► ';
+    expandIcon.classList.add('expand-collapse-button');
+    childDiv.appendChild(expandIcon);
+    expandIcon.style.visibility = "hidden"
+
+  // if (child.children && child.children.length > 0) {
+  //   // Add an expand icon
+  //   expandIcon.style.visibility = "visible"
+  // }
+
+  // Add a bullet icon for child
+  const bulletIcon = document.createElement('i');
+  bulletIcon.classList.add("ri-checkbox-blank-circle-fill")
+  
+  bulletIcon.classList.add("bullet-icon")
+  // bulletIcon.innerHTML = '<i class="ri-record-circle-fill bullet-icon"></i>'
+  childDiv.appendChild(bulletIcon);
+  
+  const childText = document.createElement('span');
+  childText.contentEditable = true
+  childText.dataset.id = entityId;
+  if(title){
+    childText.innerText = title
+  }
+  childDiv.appendChild(childText);
+
+   // Focus on the new bullet point
+   setTimeout(() => childText.focus(), 0);
+console.log(elm.nextSibling);
+  //  if (elm.nextSibling) {
+  //   elm.insertBefore(childDiv, elm.nextSibling);
+  //  } else {
+  //   elm.appendChild(childDiv);
+  //  }
+elm.appendChild(childDiv)
+  
+}
 
 function setupEventListener() {
+
+  document.getElementById('openaiForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    // Extract data from the form
+    const mainElement = document.getElementById("main");
+    console.log(clickedDoc);
+    const selectedElement = mainElement.querySelector(`[data-id="${clickedDoc}"]`);
+    const text = selectedElement.innerText;
+    console.log(text);
+
+    // const useCase = document.getElementById('useCase').value;
+    const outputType = document.getElementById('outputType').value;
+    // ... extract other fields ...
+
+    // Assuming you have the selected node title in a variable named `selectedNodeTitle`
+    // const data = {
+    //   prompt: selectedNodeTitle,
+    //   useCase: useCase,
+    //   outputType: outputType,
+    //   // ... other data ...
+    // };
+
+    try {
+      const apiKey = "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";
+      const message = text;
+      let response
+      
+      chatWithGPT(apiKey, message).then(response => {
+        
+        console.log(response);
+       let node = createNode(response, clickedDoc);
+       
+       insertOneBullet(selectedElement.querySelector(".childrenContainer"),node.entityId,response)
+      });
+ // Create a new node with the result
+      // You can modify this part according to your needs
+     
+    } catch (error) {
+      console.error("Error sending data to OpenAI:", error);
+    }
+  });
+
+  document.getElementById('openaiButton').addEventListener('click', function() {
+    const sidebar = document.getElementById('openaiSidebar');
+    sidebar.classList.toggle('open');
+});
+
 
   window.addEventListener('beforeunload', function (event) {
     // Trigger the sync function
@@ -319,21 +618,44 @@ function setupEventListener() {
   });
 
 
+  // // When a document title is clicked, fetch the document and display its content in the main area
+  // document.getElementById('sidebar').addEventListener('click', async (event) => {
+  //   if (event.target.classList.contains('doc-title')) {
+  //     // Get the document ID
+  //     const docId = event.target.parentNode.dataset.id;
+  //     selectedDocId = docId
+
+  //     bulletPoints(docId)
+  //     // // Display the document content in the main area
+  //     // document.getElementById('doc-content').innerHTML = `<div class="bullet-point" contenteditable="true">${doc.content}<br></div>`
+  //   }
+  // });
+
+  window.addEventListener("hashchange", async function() {
+    ids = await getIdsFromURL()
+    
+    console.log("hashchanged");
+    console.log(ids.nodeId);
+    bulletPoints(ids.nodeId)
+
+});
+
+
   // When a document title is clicked, fetch the document and display its content in the main area
-  document.getElementById('sidebar').addEventListener('click', async (event) => {
-    if (event.target.classList.contains('doc-title')) {
+  document.getElementById('main').addEventListener('click', async (event) => {
+    if (event.target.classList.contains('bullet-icon')) {
       // Get the document ID
       const docId = event.target.parentNode.dataset.id;
       selectedDocId = docId
 
-      bulletPoints(docId)
+     window.location.hash = `#/${ids.rootId}/${selectedDocId}`
       // // Display the document content in the main area
       // document.getElementById('doc-content').innerHTML = `<div class="bullet-point" contenteditable="true">${doc.content}<br></div>`
     }
   });
 
   // Listen for the input event on the textarea
-  textarea.addEventListener('input', (e) => {
+main.addEventListener('input', (e) => {
 
     // Save the changes after a delay to avoid saving too frequently
     // If a timer is already running, clear it
@@ -409,9 +731,39 @@ function setupEventListener() {
     }
   });
 
+ main.addEventListener('click', async function (event) {
+    if (event.target.classList.contains('expand-collapse-button')) {
+      let parentNode = event.target.parentNode;
+      let parentNodeId = parentNode.dataset.id;
+      // Fetch the children from the server if they haven't been fetched yet
+      let childrenContainer = parentNode.querySelector('.childrenContainer');
+
+      if (event.target.parentElement.getAttribute('data-children-fetched') === 'true') {
+
+        if (childrenContainer.style.display === 'none') {
+          childrenContainer.style.display = 'block';
+
+          event.target.textContent = '▼';
+        } else {
+          childrenContainer.style.display = 'none';
+          event.target.textContent = '►';
+        }
+      } else {
+        let children
+        // let children = await apiRequest(`/documents/${parentNodeId}/children`, "GET")
+          renderTree(parentNodeId, parentNode);
+        
+        event.target.parentElement.setAttribute('data-children-fetched', 'true');
+        event.target.textContent = '▼';
+      }
+    }
+  });
+
+
+
   // function to open dropdown
-  textarea.addEventListener('keyup', function (event) {
-    const text = textarea.textContent;
+ main.addEventListener('keyup', function (event) {
+    const text = main.textContent;
     const slashIndex = text.lastIndexOf('/');
 
     if (event.key === '/') {
@@ -447,29 +799,26 @@ function setupEventListener() {
     if (e.key === 'Enter') {
       e.preventDefault();
 
-      // Insert a new bullet point after the current line.
-      let bulletPoint = document.createElement('div');
-      bulletPoint.classList.add('bullet-point');
-      bulletPoint.contentEditable = "true";
-      bulletPoint.innerHTML = '<br>';
-      // Focus on the new bullet point
-      setTimeout(() => bulletPoint.focus(), 0);
+     let node
+   
+   if(!e.target.parentElement.parentElement.dataset.id){
+     node = await createNode("untitled", e.target.dataset.id)
+     insertOneBullet(e.target.parentNode,node.entityId)
 
-      if (e.target.nextSibling) {
-        e.target.parentNode.insertBefore(bulletPoint, e.target.nextSibling);
-      } else {
-        e.target.parentNode.appendChild(bulletPoint);
-      }
+   }else{
+     node = await createNode("untitled", e.target.parentElement.parentElement.dataset.id)
+     insertOneBullet(e.target.parentNode.parentNode,node.entityId)
 
-      let node = await createNode("untitled", e.target.parentElement.dataset.id)
-      bulletPoint.dataset.id = node.entityId
+   }
+
+
       // Update the title of the document in the sidebar
       const sidebarDoc = document.querySelector(`.doc[data-id="${node.parentId}"]`)
-      const childrenContainer = sidebarDoc.parentNode.querySelector('.doc-children');
-
-      renderDocument(node, childrenContainer)
-
-
+      if(sidebarDoc){
+        const childrenContainer = sidebarDoc.parentNode.querySelector('.doc-children');
+        renderDocument(node, childrenContainer)
+      }
+         
 
 
     } else if (e.key === 'Tab') {
@@ -480,8 +829,18 @@ function setupEventListener() {
     }
   });
 
+  document.getElementById("backBtn").addEventListener("click", function() {
+    window.history.back();
+  });
+  
+  document.getElementById("forwardBtn").addEventListener("click", function() {
+    window.history.forward();
+  });
+  
+
   // Handle click events for bullet points.
   document.getElementById('doc-content').addEventListener('click', function (e) {
+    clickedDoc = e.target.dataset.id
     if (e.target.classList.contains('bullet-point')) {
       // Select the clicked bullet point.
       let range = document.createRange();
@@ -498,7 +857,7 @@ function setupEventListener() {
     const emailToShare = document.getElementById('shareEmail').value;
     const permission = document.getElementById('shareRole').value;
     let data = {
-      entityId: currentDocId,
+      entityId: ids.rootId,
       emailToShare: emailToShare,
       role: permission
     }
@@ -507,7 +866,7 @@ function setupEventListener() {
 
 
 
-  document.getElementById("logOutBtn").addEventListener("click",logOut)
+  document.getElementById("logOutBtn").addEventListener("click", logOut)
   document.getElementById('export-json').addEventListener('click', () => exportDocument('json'));
   document.getElementById('export-csv').addEventListener('click', () => exportDocument('csv'));
 
@@ -516,6 +875,7 @@ function setupEventListener() {
 async function start() {
   // Fetch and render the root document when the page loads
   await loadDocument()
+  
   Loader.hideLoader()
   setupEventListener()
   setUpModal()

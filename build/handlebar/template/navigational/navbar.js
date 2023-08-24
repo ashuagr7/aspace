@@ -2,7 +2,8 @@ const navbarTemplate = `
 <nav>
 
           <div>
-          <img src="https://res.cloudinary.com/cantacloud2/image/upload/v1690399369/logo_d3r2ag.jpg" alt="Qrse">
+          <i id="backBtn" class="ri-arrow-left-s-line navIc"></i>
+          <i id="forwardBtn" style="margin-left:10px" class="ri-arrow-right-s-line navIc"></i>
           
         </div>
   <form search>

@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Editor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -31,10 +32,29 @@
       ></label>
       <aside class="sidebar" id="sidebar"></aside>
       <div id="main" class="main">
-        <header class="navbar" id="navbar" nav></header>
+        <header class="navbar" id="navbar" nav nav-fix></header>
 
         <div id="doc-content"><div id="kanban-container"></div></div>
       </div>
+      <div id="openaiSidebar" class="sidebar sidebarOpenAi">
+        <!-- Form contents go here --><form id="openaiForm">
+    <label for="useCase">Use Case:</label>
+    <select id="useCase" >
+        <!-- Add your options here -->
+    </select>
+
+    <label for="outputType">Output Type:</label>
+    <select id="outputType" required>
+        <option value="prompt">Prompt</option>
+        <!-- Add your other options here -->
+    </select>
+
+    <!-- Add more fields as needed -->
+
+    <button type="submit">Send</button>
+</form>
+
+    </div>
     </div>
     <!-- Share Modal -->
     <div id="shareModal" class="modal">
