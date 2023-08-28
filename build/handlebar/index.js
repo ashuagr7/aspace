@@ -2,6 +2,8 @@ import { sidebarData } from "./data/sidebar.js";
 import { sidebarTemplate } from "./template/navigational/sidebar.js";
 import { navbarData } from "./data/navbar.js";
 import { navbarTemplate } from "./template/navigational/navbar.js";
+import { siteNav } from "./template/navigational/siteNav.js";
+import { siteNavData } from "./data/siteNav.js";
 import { cardData } from "./data/card.js";
 import { cardTemplate } from "./template/informative/card.js";
 import { searchComponent } from "./template/functional/search.js";
@@ -24,6 +26,11 @@ const engine = [
         template:sidebarTemplate,
         data:sidebarData,
         sel:"#sidebarPari"
+    },
+    {
+        template: siteNav,
+        data:siteNavData,
+        sel:"#landNav"
     },
     {
         template: explorerHeader,

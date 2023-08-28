@@ -3,8 +3,10 @@ import { generateUniqueId } from "./utils/uniqueId.js";
 import { IndexedDB } from "./utils/idb.js";
 import { Loader } from "./utils/loader.js";
 import { Auth } from "./auth.js";
+import { TreeEditor } from "./tree.js";
 
 const auth = new Auth()
+const tree = new TreeEditor()
 
 
 async function initializeDatabase() {
@@ -55,7 +57,7 @@ async function fetchRootDocuments() {
     // console.log(documents);
     try {
         const allDocuments = await IndexedDB.GetAll('MyDatabase', 'documents');
-        let rootDocuments = allDocuments.filter(doc => doc.parentId === null);    
+        let rootDocuments = allDocuments.filter(doc => doc.parentId === null);
         renderHandlebarsTemplate(explorerList, rootDocuments, "#explorerList")
     } catch (error) {
         console.error('Error fetching root documents:', error);
@@ -67,7 +69,7 @@ async function fetchRootDocuments() {
 function checkAuthentication() {
     const token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = '/signIn.html';  // Redirect to sign-in page
+        window.location.href = '/landingPage.html';  // Redirect to sign-in page
     }
 }
 
@@ -93,7 +95,7 @@ async function createNewDocument() {
         isRoot: true,
         syncStatus: "new",
         lastModified: Date.now(),
-        children:[]
+        children: []
         // ... any other necessary properties
     };
     // Add this document to IndexedDB
@@ -101,7 +103,7 @@ async function createNewDocument() {
     console.log(doc);
     // navigate user to new doucment page 
     if (doc && doc.entityId) {
-        window.location.href = `/editor.html?id=${doc.entityId}`;
+        window.location.href = `/editor.html#/${doc.entityId}`;
     } else {
         alert("Failed to create a new document.");
     }
@@ -109,25 +111,81 @@ async function createNewDocument() {
 
 }
 
-async function fetchAndPopulateDocuments() {   
-        try {
-            const allDocuments = await IndexedDB.GetAll('MyDatabase', 'documents');
-            let rootDocuments = allDocuments.filter(doc => doc.parentId === null);
-            
-            if(!rootDocuments || rootDocuments.length == "0"){
-                console.log("Trying to fetch docs");
-                const documents = await apiRequest("/api/fetchUserDocuments", "GET")
-                console.log(documents);
-                // Add documents to IndexedDB
-                await IndexedDB.BulkCreate('MyDatabase', 'documents', documents);
-                console.log("All documents have been added to IndexedDB!");
+// async function fetchAndPopulateDocuments() {
+//     try {
+//         const allDocuments = await IndexedDB.GetAll('MyDatabase', 'documents');
+//         let rootDocuments = allDocuments.filter(doc => doc.parentId === null);
+
+//         if (!rootDocuments || rootDocuments.length == "0") {
+//             console.log("Trying to fetch docs");
+//             const documents = await apiRequest("/api/fetchUserDocuments", "GET")
+//             console.log(documents);
+//             // Add documents to IndexedDB
+//             await IndexedDB.BulkCreate('MyDatabase', 'documents', documents);
+//             console.log("All documents have been added to IndexedDB!");
+//         }
+
+//     } catch (error) {
+//         console.error("Error fetching and populating documents:", error);
+//     }
+
+// }
+
+async function serverToClient() {
+    try {
+        // 1. Fetch latest documents from server
+        const serverDocuments = await apiRequest("/api/fetchUserDocuments", "GET")
+
+        // 2. Get all documents from IndexedDB
+        const localDocuments = await IndexedDB.GetAll('MyDatabase', 'documents');
+
+        // Lists to batch the operations
+        const docsToCreate = [];
+        const docsToUpdate = [];
+
+        // 3. Compare and update
+        for (const serverDoc of serverDocuments) {
+            const localDoc = localDocuments.find(doc => doc.entityId === serverDoc.entityId);
+console.log(localDoc);
+console.log(serverDoc);
+            // If localDoc doesn't exist, it's a new document from the server
+            if (!localDoc) {
+                docsToCreate.push(serverDoc);
+                continue;
             }
 
-        } catch (error) {
-            console.error("Error fetching and populating documents:", error);
+            // Compare lastModified timestamps
+            const serverLastModified = new Date(serverDoc.lastModified).getTime();
+            const localLastModified = new Date(localDoc.lastModified).getTime();
+
+            if (serverLastModified > localLastModified) {
+                // Server has a newer version, so update the local version
+                localDoc.title = serverDoc.title;
+                localDoc.lastModified = serverDoc.lastModified;
+                localDoc.syncStatus = "synced";
+                docsToUpdate.push(localDoc);
+            }
         }
-    
+
+        // ... [rest of the function]
+
+        // Use transactions for batched operations
+        await IndexedDB.Transaction('MyDatabase', ['documents'], 'readwrite', (transaction) => {
+            const objectStore = transaction.objectStore('documents');
+
+            // Batch add for truly new documents
+            docsToCreate.forEach(doc => objectStore.add(doc));
+
+            // Batch update or add
+            docsToUpdate.forEach(doc => objectStore.put(doc));
+        });
+
+        console.log("Server to Client sync done");
+    } catch (error) {
+        console.error('Error syncing with server:', error);
+    }
 }
+
 
 function logOut() {
     auth.signOut()
@@ -155,10 +213,11 @@ function setupEventListener() {
 
 async function start() {
     await initializeDatabase()
-    // Call this function after successful sign-up/sign-in and after confirming that the IndexedDB is empty.
-    await fetchAndPopulateDocuments();
-    await fetchRootDocuments()
     Loader.hideLoader()
+    // Call this function after successful sign-up/sign-in and after confirming that the IndexedDB is empty.
+    await serverToClient()
+    await fetchRootDocuments()
+
     setupEventListener()
 }
 
@@ -170,7 +229,7 @@ document.addEventListener('DOMContentLoaded', start);
 
 
 
- 
+
 
 
 

@@ -10,9 +10,16 @@ body {
     overflow: hidden;
     width: 100vw;
     
-    
+    box-sizing: border-box;
 font-family: 'Noto Sans', sans-serif;
 
+  }
+
+  .auth-container{
+    height: fit-content;
+  }
+  .auth-container h2{
+    font-size: 3rem;
   }
 
 
@@ -41,7 +48,6 @@ font-family: 'Noto Sans', sans-serif;
   }
 
 
-
 .doc-title {
 cursor: pointer;
 max-width: 140px;
@@ -52,11 +58,21 @@ font-weight: bold;
 }
 .doc-title {
 display: inline-block;
+font-size: 15px;
+
+}
+
+.doc-icon{
+  margin-right: 5px;
+  position: relative;
+top: 2px;
 }
 
 .add-node-button {
+  position: absolute;
+  right: 15px;
 display: inline-block;
-margin-left: 10px;
+
 padding: 0 5px;
 border: none;
 background:none;
@@ -68,7 +84,7 @@ text-align: center;
 white-space: nowrap;
 vertical-align: middle;
 border-radius: 0.25rem;
-float: right;
+
 }
 
 .doc {
@@ -87,8 +103,16 @@ float: right;
     font-weight: bolder;
     color: #757A7D;
     font-size: 12px;
+    position: relative;
+    bottom: 2px;
+    margin-right: 10px;
+  }
+  .expand-collapse-button:hover{
+    
+    color: black;
   }
   
+ 
   .doc-title {
     cursor: pointer;
   }
@@ -129,19 +153,22 @@ float: right;
     align-items: flex-start;
     position: relative; /* this allows absolute positioning within this element */
     
-    font-size: 20px;
+    font-size: 18px;
 }
 
 .bullet-icon{
-  font-size: 10px;
+  font-size: 8px;
   margin-right: 10px;
+  border: 3px solid #fff;
+  border-radius: 50px;
   /* border-radius: 50px;
   min-width: 8px;
   height: 8px;
   margin-top: 12px; */
 }
 .bullet-icon:hover{
-  
+  background-color: #C0C5C7;
+  border: 3px solid #C0C5C7;
   cursor: pointer;
   transform: scale(1.2);
 }
@@ -246,6 +273,82 @@ button {
 .kanban-card:hover {
   box-shadow: 0 5px 11px 0 rgba(0, 0, 0, 0.18), 0 4px 15px 0 rgba(0, 0, 0, 0.15);
 }
+
+.doc{
+  padding: 0px 5px;
+}
+/* Hide the plus icon by default */
+.add-node-button {
+  display: none;
+  transition: opacity 0.2s; /* for smooth transition */
+}
+
+/* Show the plus icon when the corresponding doc-title is hovered */
+.doc-children div:hover > .add-node-button,
+.add-node-button:hover {
+  display: inline-block;
+  opacity: 1; /* fully visible */
+}
+
+/* Change the background color of .doc and make the plus icon visible when .doc is hovered */
+.doc-children > .doc:hover {
+    background-color: #ccc;
+    color: #fff;
+}
+
+
+
+
+
+/* Hide the three-dot menu by default */
+.three-dot-menu {
+  visibility: hidden;
+  position: relative;
+  top: 2px;
+  
+
+  /* Additional styling as needed, for positioning, etc. */
+}
+
+/* Display the three-dot menu when its parent `.doc` is hovered */
+.bullet-point:hover > .three-dot-menu {
+  visibility: visible;
+}
+
+/* Hide the menu options by default */
+.menu-options {
+  display: none;
+  /* Additional styling for the dropdown menu, e.g., background color, border, etc. */
+  position: absolute;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  width: 200px;
+  z-index: 10;
+}
+
+/* Display the menu options when the three-dot menu is hovered */
+.three-dot-menu:hover .menu-options {
+  display: block;
+}
+
+.menu-options a {
+  display: block;
+  padding: 5px 10px;
+  text-decoration: none;
+  color: #333;
+}
+
+.menu-options a:hover {
+  background-color: #f5f5f5;
+}
+
+
+
+
+
+
 
 /* Authentication pages */
 .auth-container {
@@ -376,6 +479,7 @@ a{
 a:hover{
 color: inherit;
 text-decoration: none;
+border: none;
 }
 a:visited{
   color: inherit;

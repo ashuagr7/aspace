@@ -7,24 +7,28 @@ const navbarData = {
         { icon: 'ri-profile-fill' }
     ],
     menuItems: [
-        {
-            name: "Export",
-            subItems: [
-                {
-                    name: "Export as JSON",
-                    id:"export-json"
+        // {
+        //     name: "Export",
+        //     subItems: [
+        //         {
+        //             name: "Export as JSON",
+        //             id:"export-json"
                     
 
-                },
-                {
-                    name: "Export as CSV",
-                    id:"export-csv"
+        //         },
+        //         {
+        //             name: "Export as CSV",
+        //             id:"export-csv"
                     
-                },
+        //         },
                
              
 
-            ],
+        //     ],
+        // },
+        {
+name:"Explorer",
+href:"/index.html"
         },
         {
             name: "Share",

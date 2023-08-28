@@ -146,6 +146,36 @@ class IndexedDB {
     });
 }
 
+static async Transaction(dbName, storeNames, mode, callback) {
+  let version = await this.getDatabaseVersion(dbName);
+  return new Promise((resolve, reject) => {
+      const request = indexedDB.open(dbName, version + 1);
+
+      request.onsuccess = function(event) {
+          const db = event.target.result;
+          const transaction = db.transaction(storeNames, mode);
+
+          try {
+              callback(transaction);
+              transaction.oncomplete = () => {
+                  db.close();
+                  resolve();
+              };
+          } catch(err) {
+              reject(err);
+          }
+
+          transaction.onerror = (e) => {
+              reject("Transaction error: " + e.target.error);
+          };
+      };
+
+      request.onerror = (e) => {
+          reject("DB Open error: " + e.target.error);
+      };
+  });
+}
+
 
   static async OpenClose(dbName, name) {
     let version = await this.getDatabaseVersion(dbName);

@@ -86,7 +86,7 @@ class Auth {
         // Repeat for each object store you want to clear
         try {
             await IndexedDB.DeleteStore("MyDatabase", "documents");
-            window.location.href = '/signIn.html'; 
+            window.location.href = '/auth.html'; 
             console.log("Successfully logged out and cleared data");
         } catch (error) {
             console.error("Error during logout:", error);
@@ -106,8 +106,8 @@ const auth = new Auth()
     document.getElementById('signin-form').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
 
       if (await auth.signIn(email, password)) {
         window.location.href = "/"
