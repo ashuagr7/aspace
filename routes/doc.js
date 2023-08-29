@@ -5,6 +5,11 @@ const docPermission = require("../middleware/docPerm")
 const mongoose = require("mongoose");
 const Document = mongoose.model("Document");
 const User = mongoose.model("User");
+const axios = require('axios');
+
+const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+const OPENAI_API_KEY = "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";  // Replace with your OpenAI API key
+
 
 
 app.get('/documents/export/json', async (req, res) => {
@@ -157,6 +162,35 @@ app.get('/sharedWithMe', checkToken, async (req, res) => {
       return res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  
+app.post('/ask', async (req, res) => {
+    const prompt = req.body.prompt;
+
+    if (!prompt) {
+        return res.status(400).send({ error: 'Prompt is required!' });
+    }
+
+    try {
+        const response = await axios.post(OPENAI_ENDPOINT, {
+            model: "gpt-3.5-turbo",
+
+            messages: [{role: 'system', content: 'You are a helpful assistant.'}, {role: 'user', content: prompt}],
+            
+        }, {
+            headers: {
+                'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                'Content-Type': 'application/json',
+            }
+        });
+        res.json({data:response.data.choices[0].message.content})
+
+        // return res.send({ data: response.data.choices[0].text.trim() });
+    } catch (error) {
+        console.error('Error calling OpenAI API:', error);
+        return res.status(500).send({ error: 'Failed to get response from OpenAI' });
+    }
+});
   
 
 

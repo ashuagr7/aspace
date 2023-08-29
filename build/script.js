@@ -900,11 +900,9 @@ function setupEventListener() {
 async function start() {
   // Fetch and render the root document when the page loads
   await loadDocument()
-
   Loader.hideLoader()
   setupEventListener()
   setUpModal()
-
   syncWithServer()
   serverToClient()
 }

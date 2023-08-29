@@ -6,6 +6,7 @@ const app = express();
 const port = process.env.port || 5000;
 const path = require("path")
 
+
 const cors = require("cors");
 const json2csv = require('json2csv').parse;
 
@@ -34,17 +35,6 @@ mongoose.connection.on("error", () => {
     console.log("not connected to mongodb")
 })
 
-// serving the frontend
-app.use(express.static(path.join(__dirname, "./build")))
-
-app.get("*", (req, res) => {
-    res.sendFile(
-        path.join(__dirname, "./build/index.html"),
-        function (err) {
-            res.status(500).send(err)
-        }
-    )
-})
 
 
 app.listen(port, () => {
