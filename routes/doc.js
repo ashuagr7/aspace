@@ -8,7 +8,7 @@ const User = mongoose.model("User");
 const axios = require('axios');
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-const OPENAI_API_KEY = "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";  // Replace with your OpenAI API key
+const OPENAI_API_KEY = "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";  // Replace with your OpenAI API key
 
 
 
